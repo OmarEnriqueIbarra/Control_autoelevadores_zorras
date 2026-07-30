@@ -482,15 +482,16 @@ function imprimirDia(fechaIso){
       '<td>'+esc(eq.marca||'')+'</td>'+
       '<td>'+esc(eq.serie||'—')+'</td>'+
       '<td>'+esc(eq.sector||'')+'</td>'+
+      '<td>'+esc(m.observaciones||'')+'</td>'+
     '</tr>';
   }).join('');
 
   var html = '<h2>Akapol · Mantenimiento — Equipos a revisar el '+fmtDate(fechaIso)+'</h2>'+
     '<div class="print-sub">'+pendientes.length+' equipo(s) programado(s) para ese día</div>'+
     '<table class="print-tabla"><thead><tr>'+
-      '<th>JJ</th><th>Marca</th><th>N° de serie</th><th>Sector</th>'+
+      '<th>JJ</th><th>Marca</th><th>N° de serie</th><th>Sector</th><th>Observaciones</th>'+
     '</tr></thead><tbody>'+
-    (filas || '<tr><td colspan="4" style="text-align:center">No hay equipos programados para este día.</td></tr>')+
+    (filas || '<tr><td colspan="5" style="text-align:center">No hay equipos programados para este día.</td></tr>')+
     '</tbody></table>';
 
   document.getElementById('printARevisar').innerHTML = html;
