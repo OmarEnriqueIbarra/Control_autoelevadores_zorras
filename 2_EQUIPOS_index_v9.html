@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Control de Equipos — Akapol</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap');
+:root{
+  --bg:#f0ede8;--card:#fff;--tx:#1c1a17;--mu:#7a7570;--br:#dedad4;
+  --ac:#c45c1a;--ac2:#e8956d;--head:#1c1a17;--gn:#2e7d32;--gn2:#d4edda;
+  --yl:#f59e0b;--yl2:#fef3c7;--rd:#c0392b;--rd2:#fdecea;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;font-size:14px;padding-bottom:40px;}
+
+.hdr{background:var(--head);color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+.hdr-left .ey{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ac2);font-family:'Space Mono',monospace;margin-bottom:3px;}
+.hdr-left h1{font-size:19px;font-weight:800;}
+
+.wrap{max-width:1400px;margin:0 auto;padding:16px 16px 0;}
+.status-line{padding:6px 4px;font-size:11px;color:var(--mu);}
+
+.resumen{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;}
+@media(max-width:600px){.resumen{grid-template-columns:repeat(2,1fr);}}
+.resumen-box{background:var(--card);border:1px solid var(--br);border-radius:10px;padding:10px;text-align:center;}
+.resumen-box .num{font-size:22px;font-weight:800;}
+.resumen-box .lbl{font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:.03em;margin-top:2px;}
+.resumen-box.ok .num{color:var(--gn);}
+.resumen-box.por .num{color:var(--yl);}
+.resumen-box.venc .num{color:var(--rd);}
+
+.categoria{margin-bottom:22px;}
+.cat-titulo{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#fff;background:var(--ac);padding:9px 14px;border-radius:8px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
+.cat-titulo .cant{background:rgba(255,255,255,.25);border-radius:20px;padding:1px 9px;font-size:11px;}
+
+.eq-card{background:var(--card);border:1.5px solid var(--br);border-radius:12px;padding:14px 16px;margin-bottom:10px;}
+.eq-card.st-ok{border-left:5px solid var(--gn);}
+.eq-card.st-por{border-left:5px solid var(--yl);}
+.eq-card.st-venc{border-left:5px solid var(--rd);}
+.eq-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;}
+.eq-jj{font-family:'Space Mono',monospace;font-weight:800;color:var(--ac);font-size:14px;}
+.eq-desc{font-size:12px;color:var(--mu);margin-top:2px;}
+.chip{display:inline-block;padding:3px 10px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap;}
+.chip-ok{background:var(--gn2);color:var(--gn);}
+.chip-por{background:var(--yl2);color:#8a6100;}
+.chip-venc{background:var(--rd2);color:var(--rd);}
+
+.eq-info{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--mu);}
+.eq-info b{color:var(--tx);}
+
+.eq-acciones{display:flex;gap:8px;margin-top:12px;}
+.btn{padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:none;font-family:'Inter',sans-serif;}
+.btn-ac{background:var(--ac);color:#fff;}
+.btn-gh{background:#fff;border:1px solid var(--br);color:var(--tx);}
+
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:100;padding:16px;}
+.modal-bg.show{display:flex;}
+.modal{background:#fff;border-radius:14px;max-width:480px;width:100%;max-height:85vh;overflow:auto;padding:22px;}
+.modal h3{font-size:16px;margin-bottom:14px;}
+.modal-cerrar{float:right;background:none;border:none;font-size:20px;cursor:pointer;color:var(--mu);}
+.f label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--mu);margin:10px 0 5px;}
+.f input,.f textarea{width:100%;padding:9px 10px;border:1px solid #e9d98a;background:#fffde7;border-radius:8px;font-family:'Inter',sans-serif;font-size:14px;color:var(--tx);}
+.f textarea{resize:vertical;min-height:60px;}
+.f-estado{display:flex;gap:6px;}
+.btn-estado{flex:1;padding:9px 4px;border-radius:8px;border:1.5px solid var(--br);background:#fff;font-size:11px;font-weight:700;cursor:pointer;color:var(--mu);font-family:'Inter',sans-serif;}
+.btn-estado.on-arevisar{background:var(--yl2);border-color:var(--yl);color:#8a6100;}
+.btn-estado.on-revisado{background:var(--gn2);border-color:var(--gn);color:var(--gn);}
+.btn-estado.on-pasado{background:var(--rd2);border-color:var(--rd);color:var(--rd);}
+
+.hist-item{border-bottom:1px solid var(--br);padding:10px 0;font-size:12.5px;}
+.hist-item:last-child{border-bottom:none;}
+.hist-fecha{font-family:'Space Mono',monospace;font-weight:700;color:var(--ac);}
+.hist-acciones{margin-top:4px;}
+.link-mini{color:var(--ac);font-size:11px;font-weight:600;cursor:pointer;text-decoration:underline;background:none;border:none;margin-right:10px;}
+
+.tabs{display:flex;background:#fff;border-bottom:2px solid var(--br);padding:0 16px;}
+.tab-btn{padding:11px 16px;font-size:13px;font-weight:700;cursor:pointer;border:none;background:none;color:var(--mu);border-bottom:3px solid transparent;margin-bottom:-2px;font-family:'Inter',sans-serif;}
+.tab-btn.active{color:var(--ac);border-bottom-color:var(--ac);}
+
+.cron-nav{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+.cron-mes-label{font-size:15px;font-weight:800;min-width:140px;text-align:center;}
+
+.print-only{display:none;}
+@media print{
+  body *{visibility:hidden;}
+  #printARevisar, #printARevisar *{visibility:visible;}
+  #printARevisar{display:block;position:absolute;top:0;left:0;width:100%;padding:20px;}
+  .print-only h2{font-size:16px;margin-bottom:4px;}
+  .print-only .print-sub{font-size:11px;color:var(--mu);margin-bottom:14px;}
+  table.print-tabla{width:100%;border-collapse:collapse;font-size:12px;}
+  table.print-tabla th, table.print-tabla td{border:1px solid #999;padding:6px 8px;text-align:left;}
+  table.print-tabla th{background:#eee;}
+}
+.cron-scroll{overflow-x:auto;background:#fff;border:1px solid var(--br);border-radius:10px;}
+table.cron-tabla{border-collapse:collapse;font-size:10.5px;white-space:nowrap;width:100%;}
+table.cron-tabla th, table.cron-tabla td{border:1px solid var(--br);padding:4px 5px;text-align:left;}
+table.cron-tabla th{background:#f5f2ee;font-weight:700;position:sticky;top:0;}
+table.cron-tabla .th-mes{background:var(--head);color:#fff;text-align:center;font-size:9px;text-transform:uppercase;letter-spacing:.05em;}
+table.cron-tabla .th-dia{text-align:center;color:var(--mu);font-size:9px;text-transform:uppercase;}
+table.cron-tabla .th-fecha{text-align:center;font-family:'Space Mono',monospace;font-weight:800;color:var(--ac);}
+table.cron-tabla .th-cant{text-align:center;font-size:10px;color:#ccc;background:#faf8f5;}
+table.cron-tabla .th-cant-on{color:#fff;background:var(--yl);font-weight:800;}
+table.cron-tabla .fila-cat td{background:var(--ac);color:#fff;font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:.04em;}
+table.cron-tabla .col-info{font-size:10px;max-width:90px;overflow:hidden;text-overflow:ellipsis;}
+table.cron-tabla .col-jj{font-family:'Space Mono',monospace;font-weight:700;color:var(--ac);}
+.cron-celda{text-align:center;cursor:pointer;min-width:56px;}
+.cron-celda:hover{background:#fff8f0;}
+.est-badge{display:inline-block;padding:3px 7px;border-radius:20px;font-size:10px;font-weight:800;white-space:nowrap;color:#fff;}
+.est-vacio{color:#ccc;font-size:14px;font-weight:800;}
+.est-arevisar{background:var(--yl);}
+.est-revisado{background:var(--gn);}
+.est-pasado{background:var(--rd);}
+.cron-informe{font-size:8.5px;color:var(--mu);display:block;margin-top:1px;}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-left">
+    <div class="ey">Akapol · Mantenimiento</div>
+    <h1>Control de Equipos</h1>
+  </div>
+  <button class="btn btn-gh" onclick="actualizarTodo()">🔄 Actualizar</button>
+</div>
+
+<div class="wrap">
+  <div class="status-line" id="estadoSync">Conectando con la planilla...</div>
+
+  <div class="resumen">
+    <div class="resumen-box"><div class="num" id="rTotal">0</div><div class="lbl">Total equipos</div></div>
+    <div class="resumen-box ok"><div class="num" id="rOk">0</div><div class="lbl">Al día</div></div>
+    <div class="resumen-box por"><div class="num" id="rPor">0</div><div class="lbl">Por vencer</div></div>
+    <div class="resumen-box venc"><div class="num" id="rVenc">0</div><div class="lbl">Vencido / sin revisar</div></div>
+  </div>
+
+  <div id="panelCronograma">
+    <div class="cron-nav">
+      <button class="btn btn-gh" onclick="cambiarMes(-1)">◀</button>
+      <div class="cron-mes-label" id="cronMesLabel">Agosto 2026</div>
+      <button class="btn btn-gh" onclick="cambiarMes(1)">▶</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-gh" onclick="imprimirARevisar()">🖨 Imprimir listado a revisar</button>
+    </div>
+    <div class="cron-scroll">
+      <table class="cron-tabla" id="cronTabla"></table>
+    </div>
+  </div>
+</div>
+
+<div id="printARevisar" class="print-only"></div>
+
+<!-- Modal: agregar mantenimiento -->
+<div class="modal-bg" id="modalNuevo">
+  <div class="modal">
+    <button class="modal-cerrar" onclick="cerrarModalNuevo()">✕</button>
+    <h3 id="modalNuevoTitulo">Nuevo mantenimiento</h3>
+    <div class="f">
+      <label>Fecha</label>
+      <input type="date" id="mFecha">
+    </div>
+    <div class="f">
+      <label>Estado</label>
+      <div class="f-estado">
+        <button type="button" class="btn-estado" id="btnEstArevisar" onclick="elegirEstado('A revisar')">🕐 A revisar</button>
+        <button type="button" class="btn-estado" id="btnEstRevisado" onclick="elegirEstado('Revisado')">✓ Revisado</button>
+        <button type="button" class="btn-estado" id="btnEstPasado" onclick="elegirEstado('Se pasó')">⚠️ Se pasó</button>
+      </div>
+    </div>
+    <div id="camposInforme" style="display:none">
+      <div class="f">
+        <label>N° de informe</label>
+        <input type="text" id="mInforme" placeholder="Ej: INF-2026-0034">
+      </div>
+    </div>
+    <div id="camposReprogramada" style="display:none">
+      <div class="f">
+        <label>Nueva fecha estimada</label>
+        <input type="date" id="mFechaReprogramada">
+      </div>
+    </div>
+    <div class="f">
+      <label>Observaciones (opcional)</label>
+      <textarea id="mObs" placeholder="Detalle de lo realizado, o motivo si se pasó..."></textarea>
+    </div>
+    <button class="btn btn-ac" style="width:100%;margin-top:16px" onclick="confirmarNuevoMantenimiento()">Guardar</button>
+    <button class="btn btn-gh" id="btnEliminarDesdeModal" style="width:100%;margin-top:8px;display:none;color:var(--rd);border-color:var(--rd)" onclick="eliminarDesdeModalNuevo()">🗑 Eliminar este registro</button>
+  </div>
+</div>
+
+<!-- Modal: historial de un equipo -->
+<div class="modal-bg" id="modalHist">
+  <div class="modal">
+    <button class="modal-cerrar" onclick="cerrarModalHist()">✕</button>
+    <h3 id="modalHistTitulo">Historial</h3>
+    <div id="modalHistBody"></div>
+  </div>
+</div>
+
+<script>
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzjhxma29dSTiEdpZvUg-eMLbpId_jWX6NGfg1VhrZcjdecymsf4lqkZsIvWmpcr7qd/exec';
+var FRECUENCIA_DIAS = 30;
+
+var EQUIPOS = [{"jj": "JJ14705", "tipo": "Plataforma elevadora", "marca": "HAULOTTE", "serie": "CE148020", "capacidad": "1655", "sector": "MANTENIMIENTO", "usuario": "Uso general "}, {"jj": "JJ14907", "tipo": "Zorra", "marca": "HYSTER", "serie": "B218N29066L", "capacidad": "1800", "sector": "EXPEDICION", "usuario": "ZZ03414_ALVAREZ_GUSTAVO MARCELO"}, {"jj": "JJ14915", "tipo": "Zorra", "marca": "HYSTER", "serie": "B218N29067L", "capacidad": "1800", "sector": "POXIMIX", "usuario": "Uso general "}, {"jj": "JJ15197", "tipo": "Autoelevador", "marca": "JUNGHEINRICH", "serie": "FN5126692", "capacidad": "1800", "sector": "ALMACENES", "usuario": "ZZ02388_OTT_JOSE DAVID"}, {"jj": "JJ15438", "tipo": "Zorra", "marca": "JUNGHEINRICH", "serie": "655380", "capacidad": "2000", "sector": "EXPEDICION", "usuario": "ZZ01386_VILLOTTA_HUGO ENRIQUE"}, {"jj": "JJ15773", "tipo": "Autoelevador", "marca": "JUNGHEINRICH", "serie": "FN565432", "capacidad": "", "sector": "EXPEDICION", "usuario": "ZZ01291_MARTINEZ_MARIO GERARDO"}, {"jj": "JJ15774", "tipo": "Traspaleta", "marca": "JUNGHEINRICH", "serie": "FN939434", "capacidad": "2000", "sector": "EXPEDICION", "usuario": "ZZ01399_GONZALEZ_GUSTAVO OSVALDO"}, {"jj": "JJ15973", "tipo": "Traspaleta", "marca": "JUNGHEINRICH", "serie": "", "capacidad": "", "sector": "EXPEDICION", "usuario": "Uso general "}, {"jj": "JJ16122", "tipo": "Zorra", "marca": "", "serie": "", "capacidad": "1800", "sector": "EXPEDICION", "usuario": "ZZ03415_VILLALBA_MARCELO ALEJANDRO"}, {"jj": "JJ16156", "tipo": "Traspaleta", "marca": "HYSTER", "serie": "", "capacidad": "2000", "sector": "EXPEDICION", "usuario": "ZZ02312_ANTUNEZ_RAMON FELIX"}, {"jj": "JJ16251", "tipo": "Zorra", "marca": "HYSTER", "serie": "", "capacidad": "", "sector": "ALMACENES", "usuario": "Uso general "}, {"jj": "JJ16302", "tipo": "Zorra", "marca": "HYSTER", "serie": "", "capacidad": "", "sector": "PLASTICOS", "usuario": "Uso general "}, {"jj": "JJ16315", "tipo": "Autoelevador", "marca": "HYSTER", "serie": "J160N02234C", "capacidad": "", "sector": "ALMACENES", "usuario": "Uso general "}, {"jj": "JJ16662", "tipo": "Autoelevador", "marca": "JUNGHEINRICH", "serie": "", "capacidad": "", "sector": "ALMACENES", "usuario": "ZZ02360_DIAZ_ABEL EDUARDO"}, {"jj": "JJ14806", "tipo": "Autoelevador", "marca": "HYSTER", "serie": "K160N02450K", "capacidad": "1800", "sector": "EXPEDICION", "usuario": "Uso general "}, {"jj": "JJ15127", "tipo": "Zorra", "marca": "HYSTER", "serie": "B218V31452M", "capacidad": "1800", "sector": "POXIMIX", "usuario": "Uso general "}, {"jj": "JJ16946", "tipo": "Autoelevador", "marca": "HELI", "serie": "05018DE6639", "capacidad": "", "sector": "ALMACENES", "usuario": "Uso general "}, {"jj": "JJ16947", "tipo": "Autoelevador", "marca": "HELI", "serie": "050181k6912", "capacidad": "", "sector": "ALMACENES", "usuario": "Uso general "}, {"jj": "JJ16948", "tipo": "Autoelevador", "marca": "HELI", "serie": "05018G4808HB2", "capacidad": "", "sector": "ALMACENES", "usuario": "Uso general "}, {"jj": "JJ16949", "tipo": "Zorra", "marca": "HANGCHA", "serie": "M1BDO1861", "capacidad": "", "sector": "ALMACENES", "usuario": "Uso general "}, {"jj": "JJ16950", "tipo": "Zorra", "marca": "HELI", "serie": "08020J10521", "capacidad": "", "sector": "GOTITA", "usuario": "Uso general "}, {"jj": "JJ16951", "tipo": "Zorra", "marca": "HELI", "serie": "08020J10519", "capacidad": "", "sector": "ALMACENES", "usuario": "Uso general "}, {"jj": "JJ16952", "tipo": "Zorra", "marca": "HELI", "serie": "080207L0733", "capacidad": "", "sector": "ALMACENES", "usuario": "Uso general "}, {"jj": "JJ16571", "tipo": "Zorra", "marca": "HYSTER", "serie": "", "capacidad": "", "sector": "POXIMIX", "usuario": "Uso general "}, {"jj": "JJ16580", "tipo": "Zorra", "marca": "HYSTER", "serie": "", "capacidad": "", "sector": "VOLIGOMA", "usuario": "Uso general "}];
+
+var MANTENIMIENTOS = [];
+var jjModalActivo = null;
+
+function esc(s){ return (s||'').toString().replace(/[&<>"]/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+function sincronizar(action, params){
+  try{
+    var payload = Object.assign({action: action}, params);
+    fetch(APPS_SCRIPT_URL, {method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(payload)})
+      .then(function(){ marcarSincronizado(true); })
+      .catch(function(err){ marcarSincronizado(false, err && err.message); });
+  }catch(err){
+    marcarSincronizado(false, 'Error antes de enviar: '+(err&&err.message));
+  }
+}
+function marcarSincronizado(ok, msg){
+  var el=document.getElementById('estadoSync');
+  if(!el) return;
+  el.textContent = ok ? '✓ Sincronizado '+new Date().toLocaleTimeString() : '⚠️ Error al sincronizar: '+(msg||'desconocido');
+  el.style.color = ok ? '#2e7d32' : '#c0392b';
+}
+
+function cargarDesdeSheet(callback){
+  fetch(APPS_SCRIPT_URL)
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      MANTENIMIENTOS = data.mantenimientos || [];
+      marcarSincronizado(true);
+      if(callback) callback();
+    })
+    .catch(function(err){
+      marcarSincronizado(false, 'No se pudo conectar (GET): '+(err&&err.message));
+      if(callback) callback();
+    });
+}
+
+function fmtDate(iso){
+  if(!iso) return '—';
+  var p = iso.split('-');
+  if(p.length!==3) return iso;
+  return p[2]+'/'+p[1]+'/'+p[0];
+}
+function hoyISO(){
+  var d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function diffDias(fechaIso){
+  var hoy = new Date(hoyISO()+'T00:00:00');
+  var f = new Date(fechaIso+'T00:00:00');
+  return Math.round((hoy - f) / 86400000);
+}
+function sumarDias(fechaIso, dias){
+  var f = new Date(fechaIso+'T00:00:00');
+  f.setDate(f.getDate()+dias);
+  return f.getFullYear()+'-'+String(f.getMonth()+1).padStart(2,'0')+'-'+String(f.getDate()).padStart(2,'0');
+}
+function proximoMartesOJueves(fechaIso){
+  var f = new Date(fechaIso+'T00:00:00');
+  while(f.getDay()!==2 && f.getDay()!==4){
+    f.setDate(f.getDate()+1);
+  }
+  return f.getFullYear()+'-'+String(f.getMonth()+1).padStart(2,'0')+'-'+String(f.getDate()).padStart(2,'0');
+}
+
+function ultimoMantenimiento(jj){
+  var deEquipo = MANTENIMIENTOS.filter(function(m){ return m.jj===jj && m.estado==='Revisado'; });
+  if(!deEquipo.length) return null;
+  deEquipo.sort(function(a,b){ return a.fecha < b.fecha ? 1 : -1; });
+  return deEquipo[0];
+}
+
+function estadoEquipo(jj){
+  var ult = ultimoMantenimiento(jj);
+  if(!ult) return {estado:'venc', label:'Nunca revisado', ultima:null, proxima:null};
+  var dias = diffDias(ult.fecha);
+  var proxima = sumarDias(ult.fecha, FRECUENCIA_DIAS);
+  if(dias > FRECUENCIA_DIAS) return {estado:'venc', label:'Vencido', ultima:ult, proxima:proxima};
+  if(dias >= FRECUENCIA_DIAS-10) return {estado:'por', label:'Por vencer', ultima:ult, proxima:proxima};
+  return {estado:'ok', label:'Al día', ultima:ult, proxima:proxima};
+}
+
+var MESES_NOM = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+var mesAct, anioAct;
+(function(){
+  var hoy = new Date();
+  mesAct = hoy.getMonth();
+  anioAct = hoy.getFullYear();
+})();
+
+function cambiarMes(delta){
+  mesAct += delta;
+  if(mesAct < 0){ mesAct = 11; anioAct--; }
+  if(mesAct > 11){ mesAct = 0; anioAct++; }
+  renderCronograma();
+}
+
+function getMartesJueves(anio, mes){
+  var dias = [];
+  var d = new Date(anio, mes, 1);
+  while(d.getMonth()===mes){
+    if(d.getDay()===2 || d.getDay()===4) dias.push(new Date(d));
+    d.setDate(d.getDate()+1);
+  }
+  return dias;
+}
+function isoDeDate(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function renderCronograma(){
+  document.getElementById('cronMesLabel').textContent = MESES_NOM[mesAct]+' '+anioAct;
+  var fechas = getMartesJueves(anioAct, mesAct);
+  var mesAbrev = MESES_NOM[mesAct].slice(0,3).toLowerCase();
+
+  var categorias = {};
+  EQUIPOS.forEach(function(e){ (categorias[e.tipo]=categorias[e.tipo]||[]).push(e); });
+  var orden = ['Autoelevador','Zorra','Traspaleta','Plataforma elevadora','Sin identificar'];
+  var nombrePlural = {'Autoelevador':'Autoelevadores','Zorra':'Zorras eléctricas','Traspaleta':'Traspaletas','Plataforma elevadora':'Plataformas elevadoras','Sin identificar':'Sin identificar'};
+
+  var html = '<thead><tr><th class="th-mes" colspan="4">Equipo</th>';
+  html += '<th class="th-mes" colspan="'+fechas.length+'">'+mesAbrev+'</th></tr>';
+  html += '<tr><th>JJ</th><th>Marca</th><th>N° serie</th><th>Sector</th>';
+  fechas.forEach(function(f){
+    var diaNom = f.getDay()===2 ? 'martes' : 'jueves';
+    html += '<th class="th-dia">'+diaNom+'</th>';
+  });
+  html += '</tr><tr><th colspan="4"></th>';
+  fechas.forEach(function(f){
+    html += '<th class="th-fecha">'+String(f.getDate()).padStart(2,'0')+'-'+mesAbrev+'</th>';
+  });
+  html += '</tr><tr><th colspan="4" style="text-align:right;font-size:9px;color:var(--mu);font-weight:400">A revisar ese día →</th>';
+  fechas.forEach(function(f){
+    var iso = isoDeDate(f);
+    var cant = MANTENIMIENTOS.filter(function(m){ return m.fecha===iso && m.estado==='A revisar'; }).length;
+    html += '<th class="th-cant'+(cant>0?' th-cant-on':'')+'">'+(cant>0?cant:'—')+'</th>';
+  });
+  html += '</tr></thead><tbody>';
+
+  orden.forEach(function(tipo){
+    var lista = categorias[tipo];
+    if(!lista || !lista.length) return;
+    html += '<tr class="fila-cat"><td colspan="'+(4+fechas.length)+'">'+(nombrePlural[tipo]||tipo)+'</td></tr>';
+    lista.forEach(function(e){
+      html += '<tr>';
+      html += '<td class="col-jj">'+esc(e.jj)+'</td>';
+      html += '<td class="col-info">'+esc(e.marca)+'</td>';
+      html += '<td class="col-info">'+esc(e.serie||'—')+'</td>';
+      html += '<td class="col-info">'+esc(e.sector)+'</td>';
+      fechas.forEach(function(f){
+        var iso = isoDeDate(f);
+        var reg = MANTENIMIENTOS.find(function(m){ return m.jj===e.jj && m.fecha===iso; });
+        if(reg){
+          var claseEst = reg.estado==='Revisado' ? 'est-revisado' : reg.estado==='Se pasó' ? 'est-pasado' : 'est-arevisar';
+          var etiqueta = reg.estado==='Revisado' ? '✓ Revisado' : reg.estado==='Se pasó' ? '⚠️ Se pasó' : '🕐 A revisar';
+          html += '<td class="cron-celda" data-jj="'+e.jj+'" data-fecha="'+iso+'" onclick="celdaClick(this)">'+
+            '<span class="est-badge '+claseEst+'">'+etiqueta+'</span>'+
+            (reg.estado==='Revisado' && reg.numero_informe ? '<span class="cron-informe">'+esc(reg.numero_informe)+'</span>' : '')+
+            (reg.estado==='Se pasó' && reg.fecha_reprogramada ? '<span class="cron-informe">→ '+fmtDate(reg.fecha_reprogramada)+'</span>' : '')+
+          '</td>';
+        } else {
+          html += '<td class="cron-celda" data-jj="'+e.jj+'" data-fecha="'+iso+'" onclick="celdaClick(this)"><span class="est-vacio">+</span></td>';
+        }
+      });
+      html += '</tr>';
+    });
+  });
+  html += '</tbody>';
+  document.getElementById('cronTabla').innerHTML = html;
+}
+
+function celdaClick(td){
+  var jj = td.getAttribute('data-jj');
+  var fecha = td.getAttribute('data-fecha');
+  var existente = MANTENIMIENTOS.find(function(m){ return m.jj===jj && m.fecha===fecha; });
+  abrirModalNuevo(jj, existente, fecha);
+}
+
+function renderTodo(){
+  var totOk=0, totPor=0, totVenc=0;
+  EQUIPOS.forEach(function(e){
+    var st = estadoEquipo(e.jj);
+    if(st.estado==='ok') totOk++; else if(st.estado==='por') totPor++; else totVenc++;
+  });
+
+  document.getElementById('rTotal').textContent = EQUIPOS.length;
+  document.getElementById('rOk').textContent = totOk;
+  document.getElementById('rPor').textContent = totPor;
+  document.getElementById('rVenc').textContent = totVenc;
+}
+
+var estadoSeleccionado = 'A revisar';
+var editandoId = null;
+
+function abrirModalNuevo(jj, registroExistente, fechaSugerida){
+  jjModalActivo = jj;
+  editandoId = registroExistente ? registroExistente.id : null;
+  document.getElementById('modalNuevoTitulo').textContent = (editandoId?'Editar':'Nuevo')+' mantenimiento — '+jj;
+  document.getElementById('mFecha').value = registroExistente ? registroExistente.fecha : (fechaSugerida || hoyISO());
+  document.getElementById('mInforme').value = registroExistente ? (registroExistente.numero_informe||'') : '';
+  document.getElementById('mObs').value = registroExistente ? (registroExistente.observaciones||'') : '';
+  document.getElementById('mFechaReprogramada').value = registroExistente ? (registroExistente.fecha_reprogramada||'') : '';
+  elegirEstado(registroExistente ? registroExistente.estado : 'A revisar');
+  document.getElementById('btnEliminarDesdeModal').style.display = registroExistente ? 'block' : 'none';
+  document.getElementById('modalNuevo').classList.add('show');
+}
+function cerrarModalNuevo(){ document.getElementById('modalNuevo').classList.remove('show'); }
+
+function elegirEstado(estado){
+  estadoSeleccionado = estado;
+  document.getElementById('btnEstArevisar').classList.toggle('on-arevisar', estado==='A revisar');
+  document.getElementById('btnEstRevisado').classList.toggle('on-revisado', estado==='Revisado');
+  document.getElementById('btnEstPasado').classList.toggle('on-pasado', estado==='Se pasó');
+  document.getElementById('camposInforme').style.display = estado==='Revisado' ? 'block' : 'none';
+  document.getElementById('camposReprogramada').style.display = estado==='Se pasó' ? 'block' : 'none';
+}
+
+function confirmarNuevoMantenimiento(){
+  var fecha = document.getElementById('mFecha').value;
+  if(!fecha){ alert('Elegí la fecha del mantenimiento'); return; }
+  var jj = jjModalActivo;
+  var datos = {
+    fecha: fecha,
+    estado: estadoSeleccionado,
+    numero_informe: document.getElementById('mInforme').value.trim(),
+    observaciones: document.getElementById('mObs').value.trim(),
+    fecha_reprogramada: document.getElementById('mFechaReprogramada').value,
+  };
+  if(editandoId){
+    var idx = MANTENIMIENTOS.findIndex(function(m){ return m.id===editandoId; });
+    if(idx>=0) Object.assign(MANTENIMIENTOS[idx], datos);
+    renderTodo();
+    renderCronograma();
+    cerrarModalNuevo();
+    sincronizar('editar', Object.assign({id:editandoId}, datos));
+  } else {
+    var registro = Object.assign({id:'m_'+Date.now(), jj:jj, created_at:new Date().toISOString()}, datos);
+    MANTENIMIENTOS.push(registro);
+    renderTodo();
+    renderCronograma();
+    cerrarModalNuevo();
+    sincronizar('nuevo', registro);
+  }
+  if(datos.estado==='Revisado'){
+    generarProximoAviso(jj, fecha);
+  }
+}
+
+function generarProximoAviso(jj, fechaBase){
+  var fechaEstimada = sumarDias(fechaBase, FRECUENCIA_DIAS);
+  var fechaProxima = proximoMartesOJueves(fechaEstimada);
+  var yaExiste = MANTENIMIENTOS.some(function(m){ return m.jj===jj && m.fecha===fechaProxima; });
+  if(yaExiste) return;
+  var aviso = {
+    id: 'm_'+Date.now()+'_auto',
+    jj: jj,
+    fecha: fechaProxima,
+    estado: 'A revisar',
+    numero_informe: '',
+    observaciones: 'Generado automáticamente a los '+FRECUENCIA_DIAS+' días de la revisión anterior.',
+    fecha_reprogramada: '',
+    created_at: new Date().toISOString()
+  };
+  MANTENIMIENTOS.push(aviso);
+  renderTodo();
+  renderCronograma();
+  sincronizar('nuevo', aviso);
+}
+
+function imprimirARevisar(){
+  var pendientes = MANTENIMIENTOS.filter(function(m){ return m.estado==='A revisar'; }).slice();
+  pendientes.sort(function(a,b){ return a.fecha < b.fecha ? -1 : 1; });
+
+  var hoy = new Date();
+  var hoyStr = hoy.toLocaleDateString('es-AR');
+
+  var filas = pendientes.map(function(m){
+    var eq = EQUIPOS.find(function(e){ return e.jj===m.jj; }) || {};
+    return '<tr>'+
+      '<td>'+fmtDate(m.fecha)+'</td>'+
+      '<td>'+esc(m.jj)+'</td>'+
+      '<td>'+esc(eq.tipo||'')+'</td>'+
+      '<td>'+esc(eq.marca||'')+'</td>'+
+      '<td>'+esc(eq.sector||'')+'</td>'+
+      '<td>'+esc(m.observaciones||'')+'</td>'+
+    '</tr>';
+  }).join('');
+
+  var html = '<h2>Akapol · Mantenimiento — Listado de equipos a revisar</h2>'+
+    '<div class="print-sub">Generado el '+hoyStr+' · '+pendientes.length+' equipo(s) pendiente(s)</div>'+
+    '<table class="print-tabla"><thead><tr>'+
+      '<th>Fecha</th><th>JJ</th><th>Tipo</th><th>Marca</th><th>Sector</th><th>Observaciones</th>'+
+    '</tr></thead><tbody>'+
+    (filas || '<tr><td colspan="6" style="text-align:center">No hay equipos pendientes de revisión.</td></tr>')+
+    '</tbody></table>';
+
+  document.getElementById('printARevisar').innerHTML = html;
+  window.print();
+}
+
+function abrirModalHist(jj){
+  var eq = EQUIPOS.find(function(e){ return e.jj===jj; });
+  document.getElementById('modalHistTitulo').textContent = 'Historial — '+jj+(eq?' ('+eq.marca+')':'');
+  var deEquipo = MANTENIMIENTOS.filter(function(m){ return m.jj===jj; }).slice().sort(function(a,b){ return a.fecha<b.fecha?1:-1; });
+  var body = document.getElementById('modalHistBody');
+  if(!deEquipo.length){
+    body.innerHTML = '<div style="color:var(--mu);text-align:center;padding:20px">Todavía no hay mantenimientos registrados para este equipo.</div>';
+  } else {
+    body.innerHTML = deEquipo.map(function(m){
+      var claseEst = m.estado==='Revisado' ? 'est-revisado' : m.estado==='Se pasó' ? 'est-pasado' : 'est-arevisar';
+      var etiqueta = m.estado==='Revisado' ? '✓ Revisado' : m.estado==='Se pasó' ? '⚠️ Se pasó' : '🕐 A revisar';
+      return '<div class="hist-item">'+
+        '<div class="hist-fecha">'+fmtDate(m.fecha)+' <span class="est-badge '+claseEst+'">'+etiqueta+'</span></div>'+
+        (m.numero_informe?'<div>Informe: '+esc(m.numero_informe)+'</div>':'')+
+        (m.fecha_reprogramada?'<div>Nueva fecha estimada: '+fmtDate(m.fecha_reprogramada)+'</div>':'')+
+        (m.observaciones?'<div class="hist-acciones">'+esc(m.observaciones)+'</div>':'')+
+        '<button class="link-mini" data-id="'+m.id+'" onclick="eliminarMantenimiento(this.dataset.id)">🗑 Eliminar</button>'+
+      '</div>';
+    }).join('');
+  }
+  document.getElementById('modalHist').classList.add('show');
+}
+function cerrarModalHist(){ document.getElementById('modalHist').classList.remove('show'); }
+
+function eliminarMantenimiento(id){
+  if(!confirm('¿Eliminar este registro de mantenimiento?')) return;
+  var jj = (MANTENIMIENTOS.find(function(m){return m.id===id;})||{}).jj;
+  MANTENIMIENTOS = MANTENIMIENTOS.filter(function(m){ return m.id!==id; });
+  renderTodo();
+  if(jj) abrirModalHist(jj);
+  sincronizar('eliminar', {id:id});
+}
+
+function eliminarDesdeModalNuevo(){
+  if(!editandoId) return;
+  if(!confirm('¿Eliminar este registro de mantenimiento?')) return;
+  var idAEliminar = editandoId;
+  MANTENIMIENTOS = MANTENIMIENTOS.filter(function(m){ return m.id!==idAEliminar; });
+  renderTodo();
+  renderCronograma();
+  cerrarModalNuevo();
+  sincronizar('eliminar', {id:idAEliminar});
+}
+
+function actualizarTodo(){
+  cargarDesdeSheet(function(){
+    renderTodo();
+    renderCronograma();
+  });
+}
+
+// ── Inicio ──
+renderTodo();
+renderCronograma();
+actualizarTodo();
+setInterval(actualizarTodo, 20000);
+</script>
+</body>
+</html>
