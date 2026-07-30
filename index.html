@@ -101,6 +101,7 @@ table.cron-tabla .th-dia{text-align:center;color:var(--mu);font-size:9px;text-tr
 table.cron-tabla .th-fecha{text-align:center;font-family:'Space Mono',monospace;font-weight:800;color:var(--ac);}
 table.cron-tabla .th-cant{text-align:center;font-size:10px;color:#ccc;background:#faf8f5;}
 table.cron-tabla .th-cant-on{color:#fff;background:var(--yl);font-weight:800;}
+.btn-print-dia{background:none;border:none;cursor:pointer;font-size:11px;padding:0;margin-left:2px;}
 table.cron-tabla .fila-cat td{background:var(--ac);color:#fff;font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:.04em;}
 table.cron-tabla .col-info{font-size:10px;max-width:90px;overflow:hidden;text-overflow:ellipsis;}
 table.cron-tabla .col-jj{font-family:'Space Mono',monospace;font-weight:700;color:var(--ac);}
@@ -139,8 +140,6 @@ table.cron-tabla .col-jj{font-family:'Space Mono',monospace;font-weight:700;colo
       <button class="btn btn-gh" onclick="cambiarMes(-1)">◀</button>
       <div class="cron-mes-label" id="cronMesLabel">Agosto 2026</div>
       <button class="btn btn-gh" onclick="cambiarMes(1)">▶</button>
-      <div style="flex:1"></div>
-      <button class="btn btn-gh" onclick="imprimirARevisar()">🖨 Imprimir listado a revisar</button>
     </div>
     <div class="cron-scroll">
       <table class="cron-tabla" id="cronTabla"></table>
@@ -337,7 +336,9 @@ function renderCronograma(){
   fechas.forEach(function(f){
     var iso = isoDeDate(f);
     var cant = MANTENIMIENTOS.filter(function(m){ return m.fecha===iso && m.estado==='A revisar'; }).length;
-    html += '<th class="th-cant'+(cant>0?' th-cant-on':'')+'">'+(cant>0?cant:'—')+'</th>';
+    html += '<th class="th-cant'+(cant>0?' th-cant-on':'')+'">'+(cant>0?cant:'—')+
+      (cant>0?' <button class="btn-print-dia" data-fecha="'+iso+'" onclick="imprimirDia(this.dataset.fecha)" title="Imprimir listado de este día">🖨</button>':'')+
+    '</th>';
   });
   html += '</tr></thead><tbody>';
 
@@ -471,31 +472,25 @@ function generarProximoAviso(jj, fechaBase){
   sincronizar('nuevo', aviso);
 }
 
-function imprimirARevisar(){
-  var pendientes = MANTENIMIENTOS.filter(function(m){ return m.estado==='A revisar'; }).slice();
-  pendientes.sort(function(a,b){ return a.fecha < b.fecha ? -1 : 1; });
-
-  var hoy = new Date();
-  var hoyStr = hoy.toLocaleDateString('es-AR');
+function imprimirDia(fechaIso){
+  var pendientes = MANTENIMIENTOS.filter(function(m){ return m.fecha===fechaIso && m.estado==='A revisar'; });
 
   var filas = pendientes.map(function(m){
     var eq = EQUIPOS.find(function(e){ return e.jj===m.jj; }) || {};
     return '<tr>'+
-      '<td>'+fmtDate(m.fecha)+'</td>'+
       '<td>'+esc(m.jj)+'</td>'+
-      '<td>'+esc(eq.tipo||'')+'</td>'+
       '<td>'+esc(eq.marca||'')+'</td>'+
+      '<td>'+esc(eq.serie||'—')+'</td>'+
       '<td>'+esc(eq.sector||'')+'</td>'+
-      '<td>'+esc(m.observaciones||'')+'</td>'+
     '</tr>';
   }).join('');
 
-  var html = '<h2>Akapol · Mantenimiento — Listado de equipos a revisar</h2>'+
-    '<div class="print-sub">Generado el '+hoyStr+' · '+pendientes.length+' equipo(s) pendiente(s)</div>'+
+  var html = '<h2>Akapol · Mantenimiento — Equipos a revisar el '+fmtDate(fechaIso)+'</h2>'+
+    '<div class="print-sub">'+pendientes.length+' equipo(s) programado(s) para ese día</div>'+
     '<table class="print-tabla"><thead><tr>'+
-      '<th>Fecha</th><th>JJ</th><th>Tipo</th><th>Marca</th><th>Sector</th><th>Observaciones</th>'+
+      '<th>JJ</th><th>Marca</th><th>N° de serie</th><th>Sector</th>'+
     '</tr></thead><tbody>'+
-    (filas || '<tr><td colspan="6" style="text-align:center">No hay equipos pendientes de revisión.</td></tr>')+
+    (filas || '<tr><td colspan="4" style="text-align:center">No hay equipos programados para este día.</td></tr>')+
     '</tbody></table>';
 
   document.getElementById('printARevisar').innerHTML = html;
