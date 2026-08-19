@@ -192,6 +192,7 @@ table.cron-tabla .col-jj{font-family:'Space Mono',monospace;font-weight:700;colo
   <div class="modal">
     <button class="modal-cerrar" onclick="cerrarModalHist()">✕</button>
     <h3 id="modalHistTitulo">Historial</h3>
+    <div id="modalDetalleEquipo"></div>
     <div id="modalHistBody"></div>
   </div>
 </div>
@@ -229,6 +230,15 @@ function cargarDesdeSheet(callback){
     .then(function(r){ return r.json(); })
     .then(function(data){
       MANTENIMIENTOS = data.mantenimientos || [];
+      if(data.equipos && data.equipos.length){
+        EQUIPOS = data.equipos.map(function(e){
+          return {
+            jj: e.jj, tipo: e.tipo||'', marca: e.marca||'', serie: e.serie||'',
+            capacidad: e.capacidad||'', sector: e.sector||'', usuario: e.usuario||'',
+            proveedor: e.proveedor||'', desc: e.desc||''
+          };
+        });
+      }
       marcarSincronizado(true);
       if(callback) callback();
     })
@@ -348,7 +358,7 @@ function renderCronograma(){
     html += '<tr class="fila-cat"><td colspan="'+(4+fechas.length)+'">'+(nombrePlural[tipo]||tipo)+'</td></tr>';
     lista.forEach(function(e){
       html += '<tr>';
-      html += '<td class="col-jj">'+esc(e.jj)+'</td>';
+      html += '<td class="col-jj" style="cursor:pointer;text-decoration:underline" title="Ver/editar equipo" onclick="abrirModalHist(\''+e.jj+'\')">'+esc(e.jj)+'</td>';
       html += '<td class="col-info">'+esc(e.marca)+'</td>';
       html += '<td class="col-info">'+esc(e.serie||'—')+'</td>';
       html += '<td class="col-info">'+esc(e.sector)+'</td>';
@@ -500,7 +510,14 @@ function imprimirDia(fechaIso){
 
 function abrirModalHist(jj){
   var eq = EQUIPOS.find(function(e){ return e.jj===jj; });
-  document.getElementById('modalHistTitulo').textContent = 'Historial — '+jj+(eq?' ('+eq.marca+')':'');
+  document.getElementById('modalHistTitulo').textContent = 'Equipo — '+jj;
+  renderDetalleEquipoCE(eq);
+  renderHistorialCE(jj);
+  document.getElementById('modalHist').classList.add('show');
+}
+function cerrarModalHist(){ document.getElementById('modalHist').classList.remove('show'); }
+
+function renderHistorialCE(jj){
   var deEquipo = MANTENIMIENTOS.filter(function(m){ return m.jj===jj; }).slice().sort(function(a,b){ return a.fecha<b.fecha?1:-1; });
   var body = document.getElementById('modalHistBody');
   if(!deEquipo.length){
@@ -518,9 +535,59 @@ function abrirModalHist(jj){
       '</div>';
     }).join('');
   }
-  document.getElementById('modalHist').classList.add('show');
 }
-function cerrarModalHist(){ document.getElementById('modalHist').classList.remove('show'); }
+
+function renderDetalleEquipoCE(eq){
+  var cont = document.getElementById('modalDetalleEquipo');
+  if(!eq){
+    cont.innerHTML = '<div style="color:var(--mu);font-size:12px;margin-bottom:14px">Sin datos de este equipo en la hoja "Equipos".</div>';
+    return;
+  }
+  cont.innerHTML =
+    '<div style="background:#faf8f5;border:1px solid var(--br);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:12.5px">'+
+      '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px 16px;margin-bottom:6px">'+
+        '<div><b>Tipo:</b> '+esc(eq.tipo||'—')+'</div>'+
+        '<div><b>Marca:</b> '+esc(eq.marca||'—')+'</div>'+
+        '<div><b>Capacidad:</b> '+esc(eq.capacidad||'—')+(eq.capacidad?' kg':'')+'</div>'+
+      '</div>'+
+      '<div style="margin-bottom:6px"><b>Usuario:</b> '+esc(eq.usuario||'—')+'</div>'+
+      '<div id="bloqueSerieSector">'+
+        '<div><b>N° de serie:</b> '+esc(eq.serie||'— (falta pedirlo al proveedor)')+'</div>'+
+        '<div><b>Sector:</b> '+esc(eq.sector||'—')+'</div>'+
+      '</div>'+
+      '<button class="link-mini" style="margin-top:6px" onclick="activarEdicionEquipoCE(\''+eq.jj+'\')">✏️ Editar serie / transferir de sector</button>'+
+    '</div>';
+}
+
+function activarEdicionEquipoCE(jj){
+  var eq = EQUIPOS.find(function(e){ return e.jj===jj; });
+  if(!eq) return;
+  var bloque = document.getElementById('bloqueSerieSector');
+  bloque.innerHTML =
+    '<div class="f" style="margin-top:0">'+
+      '<label>N° de serie</label>'+
+      '<input type="text" id="ceSerie" value="'+esc(eq.serie||'')+'" placeholder="Ej: FN5126692">'+
+    '</div>'+
+    '<div class="f">'+
+      '<label>Sector</label>'+
+      '<input type="text" id="ceSector" value="'+esc(eq.sector||'')+'" placeholder="Ej: ALMACENES">'+
+    '</div>'+
+    '<div style="display:flex;gap:8px;margin-top:8px">'+
+      '<button class="btn btn-ac" style="flex:1" onclick="guardarEdicionEquipoCE(\''+jj+'\')">Guardar</button>'+
+      '<button class="btn btn-gh" style="flex:1" onclick="renderDetalleEquipoCE(EQUIPOS.find(function(e){return e.jj===\''+jj+'\';}))">Cancelar</button>'+
+    '</div>';
+}
+
+function guardarEdicionEquipoCE(jj){
+  var serie = document.getElementById('ceSerie').value.trim();
+  var sector = document.getElementById('ceSector').value.trim().toUpperCase();
+  if(!sector){ alert('El sector no puede quedar vacío'); return; }
+  var eq = EQUIPOS.find(function(e){ return e.jj===jj; });
+  if(eq){ eq.serie = serie; eq.sector = sector; }
+  renderDetalleEquipoCE(eq);
+  renderCronograma();
+  sincronizar('editar_equipo', {jj: jj, serie: serie, sector: sector, actualizado_el: new Date().toISOString()});
+}
 
 function eliminarMantenimiento(id){
   if(!confirm('¿Eliminar este registro de mantenimiento?')) return;
