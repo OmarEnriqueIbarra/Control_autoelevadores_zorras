@@ -118,6 +118,7 @@ table.cron-tabla .col-jj{font-family:'Space Mono',monospace;font-weight:700;colo
 .chip-horas-ok{background:var(--gn2);color:var(--gn);}
 .chip-horas-por{background:var(--yl2);color:#8a6100;}
 .chip-horas-venc{background:var(--rd2);color:var(--rd);}
+.chip-horas-sin{background:#eee;color:var(--mu);}
 </style>
 </head>
 <body>
@@ -208,11 +209,15 @@ table.cron-tabla .col-jj{font-family:'Space Mono',monospace;font-weight:700;colo
     <button class="modal-cerrar" onclick="cerrarModalHoras()">✕</button>
     <h3 id="mhTitulo">Horas de servicio</h3>
     <div class="f">
-      <label>Lectura actual del horómetro</label>
+      <label>Lectura del horómetro</label>
       <input type="number" id="mhHorasActual" step="1" placeholder="Ej: 1450">
     </div>
-    <div id="mhInfo" style="font-size:12px;color:var(--mu);margin-top:10px"></div>
-    <button class="btn btn-ac" style="width:100%;margin-top:16px" onclick="guardarHoras()">Guardar horas</button>
+    <div class="f">
+      <label>Fecha de la lectura</label>
+      <input type="date" id="mhFechaLectura">
+    </div>
+    <div id="mhInfo" style="font-size:12px;color:var(--mu);margin-top:10px;line-height:1.6"></div>
+    <button class="btn btn-ac" style="width:100%;margin-top:16px" onclick="guardarHoras()">Guardar lectura</button>
     <button class="btn btn-gh" style="width:100%;margin-top:8px;color:var(--gn);border-color:var(--gn)" onclick="registrarControlAnual()">✓ Registrar control anual (reinicia a 0/2000h)</button>
   </div>
 </div>
@@ -242,7 +247,7 @@ function guardarEstadoEquipos(){
 }
 function getEstado(jj){
   if(!ESTADO_EQUIPOS[jj]){
-    ESTADO_EQUIPOS[jj] = {servicio:'en_servicio', horas_actual:0, horas_base:0, fecha_control:null};
+    ESTADO_EQUIPOS[jj] = {servicio:'en_servicio', horas_actual:null, fecha_lectura:null, horas_base:null, fecha_control:null};
   }
   return ESTADO_EQUIPOS[jj];
 }
@@ -254,39 +259,61 @@ function toggleServicio(jj){
 }
 function horasInfo(jj){
   var e = getEstado(jj);
-  var trans = (e.horas_actual||0) - (e.horas_base||0);
-  var estado = 'ok';
-  if(trans >= 2000) estado = 'venc';
-  else if(trans >= 1800) estado = 'por';
-  return {transcurridas: trans, estado: estado};
+  if(e.horas_actual===null || e.horas_actual===undefined) return {sinDatos:true};
+  var base = (e.horas_base!==null && e.horas_base!==undefined) ? e.horas_base : e.horas_actual;
+  var objetivo = base + 2000;
+  var restantes = objetivo - e.horas_actual;
+  var estado = restantes<=0 ? 'venc' : (restantes<=200 ? 'por' : 'ok');
+  return {sinDatos:false, actual:e.horas_actual, objetivo:objetivo, restantes:restantes, estado:estado, fecha:e.fecha_lectura};
 }
 function abrirModalHoras(jj){
   jjHorasActivo = jj;
   var e = getEstado(jj);
   document.getElementById('mhTitulo').textContent = 'Horas de servicio — '+jj;
-  document.getElementById('mhHorasActual').value = e.horas_actual || '';
-  var info = horasInfo(jj);
-  document.getElementById('mhInfo').textContent = 'Horas acumuladas desde el último control anual: '+info.transcurridas+' / 2000'+(e.fecha_control ? ' (último control: '+fmtDate(e.fecha_control)+')' : '');
+  document.getElementById('mhHorasActual').value = e.horas_actual!==null ? e.horas_actual : '';
+  document.getElementById('mhFechaLectura').value = e.fecha_lectura || hoyISO();
+  refrescarInfoHoras(jj);
   document.getElementById('modalHoras').classList.add('show');
+}
+function refrescarInfoHoras(jj){
+  var info = horasInfo(jj);
+  var el = document.getElementById('mhInfo');
+  if(info.sinDatos){
+    el.textContent = 'Todavía no hay una lectura registrada. Al guardar la primera, el próximo control anual queda fijado 2000 hs más adelante.';
+    return;
+  }
+  var linea1 = info.restantes>0
+    ? 'Faltan <b>'+info.restantes+' hs</b> para el control anual.'
+    : '<b>Vencido</b> hace '+(-info.restantes)+' hs.';
+  el.innerHTML = 'Próximo control anual: <b>a las '+info.objetivo+' hs</b><br>'+linea1+
+    (info.fecha ? '<br>Última lectura registrada: '+fmtDate(info.fecha) : '');
 }
 function cerrarModalHoras(){ document.getElementById('modalHoras').classList.remove('show'); }
 function guardarHoras(){
   var v = parseFloat(document.getElementById('mhHorasActual').value);
   if(isNaN(v) || v<0){ alert('Ingresá un número de horas válido'); return; }
+  var f = document.getElementById('mhFechaLectura').value || hoyISO();
   var e = getEstado(jjHorasActivo);
+  if(e.horas_base===null || e.horas_base===undefined){
+    // Primera lectura: fija la base del próximo control anual (lectura + 2000hs)
+    e.horas_base = v;
+    e.fecha_control = f;
+  }
   e.horas_actual = v;
+  e.fecha_lectura = f;
   guardarEstadoEquipos();
-  cerrarModalHoras();
+  refrescarInfoHoras(jjHorasActivo);
   renderCronograma();
 }
 function registrarControlAnual(){
   if(!jjHorasActivo) return;
-  if(!confirm('¿Registrar el control anual de 2000 horas para '+jjHorasActivo+'? Esto reinicia el contador a partir de las horas actuales.')) return;
   var e = getEstado(jjHorasActivo);
-  e.horas_base = e.horas_actual || 0;
-  e.fecha_control = hoyISO();
+  if(e.horas_actual===null || e.horas_actual===undefined){ alert('Primero guardá una lectura de horas para este equipo.'); return; }
+  if(!confirm('¿Registrar el control anual de 2000 horas para '+jjHorasActivo+'? El próximo control quedará fijado en '+(e.horas_actual+2000)+' hs.')) return;
+  e.horas_base = e.horas_actual;
+  e.fecha_control = e.fecha_lectura || hoyISO();
   guardarEstadoEquipos();
-  cerrarModalHoras();
+  refrescarInfoHoras(jjHorasActivo);
   renderCronograma();
 }
 
@@ -440,7 +467,12 @@ function renderCronograma(){
       html += '<td class="col-info">'+esc(e.serie||'—')+'</td>';
       html += '<td class="col-info">'+esc(e.sector)+'</td>';
       html += '<td class="cron-celda" onclick="toggleServicio(\''+e.jj+'\')"><span class="chip '+(est.servicio==='en_servicio'?'chip-serv-on':'chip-serv-off')+'">'+(est.servicio==='en_servicio'?'🟢 En servicio':'🔴 Fuera de servicio')+'</span></td>';
-      html += '<td class="cron-celda" onclick="abrirModalHoras(\''+e.jj+'\')"><span class="chip '+(hInfo.estado==='ok'?'chip-horas-ok':hInfo.estado==='por'?'chip-horas-por':'chip-horas-venc')+'">'+hInfo.transcurridas+'h / 2000h</span></td>';
+      html += '<td class="cron-celda" onclick="abrirModalHoras(\''+e.jj+'\')">'+
+        (hInfo.sinDatos
+          ? '<span class="chip chip-horas-sin">Sin datos</span>'
+          : '<span class="chip '+(hInfo.estado==='ok'?'chip-horas-ok':hInfo.estado==='por'?'chip-horas-por':'chip-horas-venc')+'">'+hInfo.actual+'h / '+hInfo.objetivo+'h</span>'+
+            (hInfo.fecha ? '<span class="cron-informe">'+fmtDate(hInfo.fecha)+'</span>' : ''))+
+        '</td>';
       fechas.forEach(function(f){
         var iso = isoDeDate(f);
         var reg = MANTENIMIENTOS.find(function(m){ return m.jj===e.jj && m.fecha===iso; });
