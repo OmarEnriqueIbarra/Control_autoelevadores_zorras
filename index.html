@@ -341,6 +341,21 @@ function cargarDesdeSheet(callback){
     .then(function(r){ return r.json(); })
     .then(function(data){
       MANTENIMIENTOS = data.mantenimientos || [];
+      if(data.equipos && data.equipos.length){
+        EQUIPOS = data.equipos
+          .map(function(e){
+            return {
+              jj: String(e.jj||'').trim(),
+              tipo: String(e.tipo||'').trim() || 'Sin identificar',
+              marca: String(e.marca||'').trim(),
+              serie: String(e.serie||'').trim(),
+              capacidad: String(e.capacidad||'').trim(),
+              sector: String(e.sector||'').trim().toUpperCase(),
+              usuario: String(e.usuario||'').trim()
+            };
+          })
+          .filter(function(e){ return e.jj; });
+      }
       marcarSincronizado(true);
       if(callback) callback();
     })
@@ -430,7 +445,8 @@ function renderCronograma(){
 
   var categorias = {};
   EQUIPOS.forEach(function(e){ (categorias[e.tipo]=categorias[e.tipo]||[]).push(e); });
-  var orden = ['Autoelevador','Zorra','Traspaleta','Plataforma elevadora','Sin identificar'];
+  var orden = ['Autoelevador','Zorra','Traspaleta','Plataforma elevadora'];
+  Object.keys(categorias).forEach(function(t){ if(orden.indexOf(t)<0) orden.push(t); });
   var nombrePlural = {'Autoelevador':'Autoelevadores','Zorra':'Zorras eléctricas','Traspaleta':'Traspaletas','Plataforma elevadora':'Plataformas elevadoras','Sin identificar':'Sin identificar'};
 
   var html = '<thead><tr><th class="th-mes" colspan="6">Equipo</th>';
