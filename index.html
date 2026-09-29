@@ -229,9 +229,11 @@ var FRECUENCIA_DIAS = 30;
 var EQUIPOS = [{"jj": "JJ14705", "tipo": "Plataforma elevadora", "marca": "HAULOTTE", "serie": "CE148020", "capacidad": "1655", "sector": "MANTENIMIENTO", "usuario": "Uso general "}, {"jj": "JJ14907", "tipo": "Zorra", "marca": "HYSTER", "serie": "B218N29066L", "capacidad": "1800", "sector": "EXPEDICION", "usuario": "ZZ03414_ALVAREZ_GUSTAVO MARCELO"}, {"jj": "JJ14915", "tipo": "Zorra", "marca": "HYSTER", "serie": "B218N29067L", "capacidad": "1800", "sector": "POXIMIX", "usuario": "Uso general "}, {"jj": "JJ15197", "tipo": "Autoelevador", "marca": "JUNGHEINRICH", "serie": "FN5126692", "capacidad": "1800", "sector": "ALMACENES", "usuario": "ZZ02388_OTT_JOSE DAVID"}, {"jj": "JJ15438", "tipo": "Zorra", "marca": "JUNGHEINRICH", "serie": "655380", "capacidad": "2000", "sector": "EXPEDICION", "usuario": "ZZ01386_VILLOTTA_HUGO ENRIQUE"}, {"jj": "JJ15773", "tipo": "Autoelevador", "marca": "JUNGHEINRICH", "serie": "FN565432", "capacidad": "", "sector": "EXPEDICION", "usuario": "ZZ01291_MARTINEZ_MARIO GERARDO"}, {"jj": "JJ15774", "tipo": "Traspaleta", "marca": "JUNGHEINRICH", "serie": "FN939434", "capacidad": "2000", "sector": "EXPEDICION", "usuario": "ZZ01399_GONZALEZ_GUSTAVO OSVALDO"}, {"jj": "JJ15973", "tipo": "Traspaleta", "marca": "JUNGHEINRICH", "serie": "", "capacidad": "", "sector": "EXPEDICION", "usuario": "Uso general "}, {"jj": "JJ16122", "tipo": "Zorra", "marca": "", "serie": "", "capacidad": "1800", "sector": "EXPEDICION", "usuario": "ZZ03415_VILLALBA_MARCELO ALEJANDRO"}, {"jj": "JJ16156", "tipo": "Traspaleta", "marca": "HYSTER", "serie": "", "capacidad": "2000", "sector": "EXPEDICION", "usuario": "ZZ02312_ANTUNEZ_RAMON FELIX"}, {"jj": "JJ16251", "tipo": "Zorra", "marca": "HYSTER", "serie": "", "capacidad": "", "sector": "ALMACENES", "usuario": "Uso general "}, {"jj": "JJ16302", "tipo": "Zorra", "marca": "HYSTER", "serie": "", "capacidad": "", "sector": "PLASTICOS", "usuario": "Uso general "}, {"jj": "JJ16315", "tipo": "Autoelevador", "marca": "HYSTER", "serie": "J160N02234C", "capacidad": "", "sector": "ALMACENES", "usuario": "Uso general "}, {"jj": "JJ16662", "tipo": "Autoelevador", "marca": "JUNGHEINRICH", "serie": "", "capacidad": "", "sector": "ALMACENES", "usuario": "ZZ02360_DIAZ_ABEL EDUARDO"}, {"jj": "JJ14806", "tipo": "Autoelevador", "marca": "HYSTER", "serie": "K160N02450K", "capacidad": "1800", "sector": "EXPEDICION", "usuario": "Uso general "}, {"jj": "JJ15127", "tipo": "Zorra", "marca": "HYSTER", "serie": "B218V31452M", "capacidad": "1800", "sector": "POXIMIX", "usuario": "Uso general "}, {"jj": "JJ16946", "tipo": "Autoelevador", "marca": "HELI", "serie": "05018DE6639", "capacidad": "", "sector": "ALMACENES", "usuario": "Uso general "}, {"jj": "JJ16947", "tipo": "Autoelevador", "marca": "HELI", "serie": "050181k6912", "capacidad": "", "sector": "ALMACENES", "usuario": "Uso general "}, {"jj": "JJ16948", "tipo": "Autoelevador", "marca": "HELI", "serie": "05018G4808HB2", "capacidad": "", "sector": "ALMACENES", "usuario": "Uso general "}, {"jj": "JJ16949", "tipo": "Zorra", "marca": "HANGCHA", "serie": "M1BDO1861", "capacidad": "", "sector": "ALMACENES", "usuario": "Uso general "}, {"jj": "JJ16950", "tipo": "Zorra", "marca": "HELI", "serie": "08020J10521", "capacidad": "", "sector": "GOTITA", "usuario": "Uso general "}, {"jj": "JJ16951", "tipo": "Zorra", "marca": "HELI", "serie": "08020J10519", "capacidad": "", "sector": "ALMACENES", "usuario": "Uso general "}, {"jj": "JJ16952", "tipo": "Zorra", "marca": "HELI", "serie": "080207L0733", "capacidad": "", "sector": "ALMACENES", "usuario": "Uso general "}, {"jj": "JJ16571", "tipo": "Zorra", "marca": "HYSTER", "serie": "", "capacidad": "", "sector": "POXIMIX", "usuario": "Uso general "}, {"jj": "JJ16580", "tipo": "Zorra", "marca": "HYSTER", "serie": "", "capacidad": "", "sector": "VOLIGOMA", "usuario": "Uso general "}];
 
 var MANTENIMIENTOS = [];
+var HORAS = [];   // lecturas del horómetro, vienen de la hoja "Horas"
 var jjModalActivo = null;
 
-// ── Estado de servicio y horas (control anual de 2000hs) — se guarda en este dispositivo ──
+// ── Estado de servicio (En servicio / Fuera de servicio) — se guarda en este dispositivo ──
+// Las horas del horómetro se guardan en la planilla (hoja "Horas").
 var ESTADO_EQUIPOS = {};
 var STORAGE_KEY_ESTADO = 'akapol_equipos_estado_v1';
 var jjHorasActivo = null;
@@ -257,21 +259,31 @@ function toggleServicio(jj){
   guardarEstadoEquipos();
   renderCronograma();
 }
+function lecturasDe(jj){
+  return HORAS.filter(function(h){ return h.jj===jj; }).slice().sort(function(a,b){
+    if(a.fecha!==b.fecha) return a.fecha < b.fecha ? -1 : 1;
+    return String(a.created_at) < String(b.created_at) ? -1 : 1;
+  });
+}
 function horasInfo(jj){
-  var e = getEstado(jj);
-  if(e.horas_actual===null || e.horas_actual===undefined) return {sinDatos:true};
-  var base = (e.horas_base!==null && e.horas_base!==undefined) ? e.horas_base : e.horas_actual;
+  var lista = lecturasDe(jj);
+  if(!lista.length) return {sinDatos:true};
+  var ultima = lista[lista.length-1];
+  var controles = lista.filter(function(h){ return h.tipo==='control_anual'; });
+  // Base del próximo control: el último control anual; si nunca hubo, la primera lectura.
+  var base = controles.length ? controles[controles.length-1].horas : lista[0].horas;
   var objetivo = base + 2000;
-  var restantes = objetivo - e.horas_actual;
+  var restantes = objetivo - ultima.horas;
   var estado = restantes<=0 ? 'venc' : (restantes<=200 ? 'por' : 'ok');
-  return {sinDatos:false, actual:e.horas_actual, objetivo:objetivo, restantes:restantes, estado:estado, fecha:e.fecha_lectura};
+  return {sinDatos:false, actual:ultima.horas, objetivo:objetivo, restantes:restantes, estado:estado, fecha:ultima.fecha};
 }
 function abrirModalHoras(jj){
   jjHorasActivo = jj;
-  var e = getEstado(jj);
+  var info = horasInfo(jj);
   document.getElementById('mhTitulo').textContent = 'Horas de servicio — '+jj;
-  document.getElementById('mhHorasActual').value = e.horas_actual!==null ? e.horas_actual : '';
-  document.getElementById('mhFechaLectura').value = e.fecha_lectura || hoyISO();
+  document.getElementById('mhHorasActual').value = '';
+  document.getElementById('mhHorasActual').placeholder = info.sinDatos ? 'Ej: 1450' : 'Última: '+info.actual+' h';
+  document.getElementById('mhFechaLectura').value = hoyISO();
   refrescarInfoHoras(jj);
   document.getElementById('modalHoras').classList.add('show');
 }
@@ -285,36 +297,36 @@ function refrescarInfoHoras(jj){
   var linea1 = info.restantes>0
     ? 'Faltan <b>'+info.restantes+' hs</b> para el control anual.'
     : '<b>Vencido</b> hace '+(-info.restantes)+' hs.';
-  el.innerHTML = 'Próximo control anual: <b>a las '+info.objetivo+' hs</b><br>'+linea1+
-    (info.fecha ? '<br>Última lectura registrada: '+fmtDate(info.fecha) : '');
+  el.innerHTML = 'Última lectura: <b>'+info.actual+' hs</b> ('+fmtDate(info.fecha)+')<br>'+
+    'Próximo control anual: <b>a las '+info.objetivo+' hs</b><br>'+linea1;
 }
 function cerrarModalHoras(){ document.getElementById('modalHoras').classList.remove('show'); }
+function registrarLecturaHoras(jj, horas, fecha, tipo){
+  var reg = {id:'h_'+Date.now(), jj:jj, fecha:fecha, horas:horas, tipo:tipo, created_at:new Date().toISOString()};
+  HORAS.push(reg);
+  sincronizar('nueva_hora', reg);
+  refrescarInfoHoras(jj);
+  renderCronograma();
+}
 function guardarHoras(){
   var v = parseFloat(document.getElementById('mhHorasActual').value);
   if(isNaN(v) || v<0){ alert('Ingresá un número de horas válido'); return; }
   var f = document.getElementById('mhFechaLectura').value || hoyISO();
-  var e = getEstado(jjHorasActivo);
-  if(e.horas_base===null || e.horas_base===undefined){
-    // Primera lectura: fija la base del próximo control anual (lectura + 2000hs)
-    e.horas_base = v;
-    e.fecha_control = f;
-  }
-  e.horas_actual = v;
-  e.fecha_lectura = f;
-  guardarEstadoEquipos();
-  refrescarInfoHoras(jjHorasActivo);
-  renderCronograma();
+  var info = horasInfo(jjHorasActivo);
+  if(!info.sinDatos && v < info.actual && !confirm('La lectura ('+v+' h) es menor que la anterior ('+info.actual+' h). ¿Guardarla igual?')) return;
+  registrarLecturaHoras(jjHorasActivo, v, f, 'lectura');
+  document.getElementById('mhHorasActual').value = '';
 }
 function registrarControlAnual(){
   if(!jjHorasActivo) return;
-  var e = getEstado(jjHorasActivo);
-  if(e.horas_actual===null || e.horas_actual===undefined){ alert('Primero guardá una lectura de horas para este equipo.'); return; }
-  if(!confirm('¿Registrar el control anual de 2000 horas para '+jjHorasActivo+'? El próximo control quedará fijado en '+(e.horas_actual+2000)+' hs.')) return;
-  e.horas_base = e.horas_actual;
-  e.fecha_control = e.fecha_lectura || hoyISO();
-  guardarEstadoEquipos();
-  refrescarInfoHoras(jjHorasActivo);
-  renderCronograma();
+  var info = horasInfo(jjHorasActivo);
+  var v = parseFloat(document.getElementById('mhHorasActual').value);
+  var horas = !isNaN(v) ? v : (info.sinDatos ? NaN : info.actual);
+  if(isNaN(horas)){ alert('Cargá la lectura del horómetro para registrar el control anual.'); return; }
+  var f = document.getElementById('mhFechaLectura').value || hoyISO();
+  if(!confirm('¿Registrar el control anual de 2000 horas para '+jjHorasActivo+' con '+horas+' h? El próximo control quedará fijado en '+(horas+2000)+' hs.')) return;
+  registrarLecturaHoras(jjHorasActivo, horas, f, 'control_anual');
+  document.getElementById('mhHorasActual').value = '';
 }
 
 function esc(s){ return (s||'').toString().replace(/[&<>"]/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
@@ -341,6 +353,7 @@ function cargarDesdeSheet(callback){
     .then(function(r){ return r.json(); })
     .then(function(data){
       MANTENIMIENTOS = data.mantenimientos || [];
+      HORAS = data.horas || [];
       if(data.equipos && data.equipos.length){
         EQUIPOS = data.equipos
           .map(function(e){
