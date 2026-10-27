@@ -92,17 +92,21 @@ body{background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;font-si
   table.print-tabla th, table.print-tabla td{border:1px solid #999;padding:6px 8px;text-align:left;}
   table.print-tabla th{background:#eee;}
 }
-.cron-scroll{overflow-x:auto;background:#fff;border:1px solid var(--br);border-radius:10px;}
-table.cron-tabla{border-collapse:collapse;font-size:10.5px;white-space:nowrap;width:100%;}
-table.cron-tabla th, table.cron-tabla td{border:1px solid var(--br);padding:4px 5px;text-align:left;}
-table.cron-tabla th{background:#f5f2ee;font-weight:700;position:sticky;top:0;}
+.cron-scroll{overflow:auto;background:#fff;border:1px solid var(--br);border-radius:10px;}
+table.cron-tabla{border-collapse:separate;border-spacing:0;font-size:10.5px;white-space:nowrap;width:100%;}
+table.cron-tabla th, table.cron-tabla td{border-right:1px solid var(--br);border-bottom:1px solid var(--br);padding:4px 5px;text-align:left;background:#fff;}
+table.cron-tabla th{background:#f5f2ee;font-weight:700;position:sticky;top:0;z-index:2;}
+/* Columnas fijas: JJ, Marca, N° serie, Sector */
+table.cron-tabla .fija{position:sticky;left:0;z-index:1;}
+table.cron-tabla th.fija{z-index:3;}
+table.cron-tabla .fija-ult{box-shadow:2px 0 0 var(--br);}
 table.cron-tabla .th-mes{background:var(--head);color:#fff;text-align:center;font-size:9px;text-transform:uppercase;letter-spacing:.05em;}
 table.cron-tabla .th-dia{text-align:center;color:var(--mu);font-size:9px;text-transform:uppercase;}
 table.cron-tabla .th-fecha{text-align:center;font-family:'Space Mono',monospace;font-weight:800;color:var(--ac);}
 table.cron-tabla .th-cant{text-align:center;font-size:10px;color:#ccc;background:#faf8f5;}
 table.cron-tabla .th-cant-on{color:#fff;background:var(--yl);font-weight:800;}
 .btn-print-dia{background:none;border:none;cursor:pointer;font-size:11px;padding:0;margin-left:2px;}
-table.cron-tabla .fila-cat td{background:var(--ac);color:#fff;font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:.04em;}
+table.cron-tabla .fila-cat td, table.cron-tabla .fila-cat td.fija{background:var(--ac);color:#fff;font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:.04em;}
 table.cron-tabla .col-info{font-size:10px;max-width:90px;overflow:hidden;text-overflow:ellipsis;}
 table.cron-tabla .col-jj{font-family:'Space Mono',monospace;font-weight:700;color:var(--ac);}
 .cron-celda{text-align:center;cursor:pointer;min-width:56px;}
@@ -462,18 +466,18 @@ function renderCronograma(){
   Object.keys(categorias).forEach(function(t){ if(orden.indexOf(t)<0) orden.push(t); });
   var nombrePlural = {'Autoelevador':'Autoelevadores','Zorra':'Zorras eléctricas','Traspaleta':'Traspaletas','Plataforma elevadora':'Plataformas elevadoras','Sin identificar':'Sin identificar'};
 
-  var html = '<thead><tr><th class="th-mes" colspan="6">Equipo</th>';
+  var html = '<thead><tr><th class="th-mes fija fija-ult" colspan="4">Equipo</th><th class="th-mes" colspan="2"></th>';
   html += '<th class="th-mes" colspan="'+fechas.length+'">'+mesAbrev+'</th></tr>';
-  html += '<tr><th>JJ</th><th>Marca</th><th>N° serie</th><th>Sector</th><th>Estado</th><th>Horas (2000h)</th>';
+  html += '<tr><th class="fija" data-c="0">JJ</th><th class="fija" data-c="1">Marca</th><th class="fija" data-c="2">N° serie</th><th class="fija fija-ult" data-c="3">Sector</th><th>Estado</th><th>Horas (2000h)</th>';
   fechas.forEach(function(f){
     var diaNom = f.getDay()===2 ? 'martes' : 'jueves';
     html += '<th class="th-dia">'+diaNom+'</th>';
   });
-  html += '</tr><tr><th colspan="6"></th>';
+  html += '</tr><tr><th class="fija fija-ult" colspan="4"></th><th colspan="2"></th>';
   fechas.forEach(function(f){
     html += '<th class="th-fecha">'+String(f.getDate()).padStart(2,'0')+'-'+mesAbrev+'</th>';
   });
-  html += '</tr><tr><th colspan="6" style="text-align:right;font-size:9px;color:var(--mu);font-weight:400">A revisar ese día →</th>';
+  html += '</tr><tr><th class="fija fija-ult" colspan="4"></th><th colspan="2" style="text-align:right;font-size:9px;color:var(--mu);font-weight:400">A revisar ese día →</th>';
   fechas.forEach(function(f){
     var iso = isoDeDate(f);
     var cant = MANTENIMIENTOS.filter(function(m){ return m.fecha===iso && m.estado==='A revisar'; }).length;
@@ -486,15 +490,15 @@ function renderCronograma(){
   orden.forEach(function(tipo){
     var lista = categorias[tipo];
     if(!lista || !lista.length) return;
-    html += '<tr class="fila-cat"><td colspan="'+(6+fechas.length)+'">'+(nombrePlural[tipo]||tipo)+'</td></tr>';
+    html += '<tr class="fila-cat"><td class="fija fija-ult" colspan="4">'+(nombrePlural[tipo]||tipo)+'</td><td colspan="'+(2+fechas.length)+'"></td></tr>';
     lista.forEach(function(e){
       var est = getEstado(e.jj);
       var hInfo = horasInfo(e.jj);
       html += '<tr>';
-      html += '<td class="col-jj">'+esc(e.jj)+'</td>';
-      html += '<td class="col-info">'+esc(e.marca)+'</td>';
-      html += '<td class="col-info">'+esc(e.serie||'—')+'</td>';
-      html += '<td class="col-info">'+esc(e.sector)+'</td>';
+      html += '<td class="col-jj fija" data-c="0">'+esc(e.jj)+'</td>';
+      html += '<td class="col-info fija" data-c="1">'+esc(e.marca)+'</td>';
+      html += '<td class="col-info fija" data-c="2">'+esc(e.serie||'—')+'</td>';
+      html += '<td class="col-info fija fija-ult" data-c="3">'+esc(e.sector)+'</td>';
       html += '<td class="cron-celda" onclick="toggleServicio(\''+e.jj+'\')"><span class="chip '+(est.servicio==='en_servicio'?'chip-serv-on':'chip-serv-off')+'">'+(est.servicio==='en_servicio'?'🟢 En servicio':'🔴 Fuera de servicio')+'</span></td>';
       html += '<td class="cron-celda" onclick="abrirModalHoras(\''+e.jj+'\')">'+
         (hInfo.sinDatos
@@ -522,7 +526,40 @@ function renderCronograma(){
   });
   html += '</tbody>';
   document.getElementById('cronTabla').innerHTML = html;
+  fijarColumnasYEncabezado();
 }
+
+// Calcula dónde arranca cada columna fija y la altura de cada fila del encabezado,
+// para que JJ/Marca/Serie/Sector queden fijos al desplazar a la derecha
+// y las filas de fechas queden fijas al desplazar hacia abajo.
+function ajustarAltoTabla(){
+  // La caja de la tabla termina justo en el borde inferior de la pantalla,
+  // así la barra de desplazamiento horizontal (para llegar a la última fecha) siempre se ve.
+  var caja = document.querySelector('.cron-scroll');
+  var arriba = caja.getBoundingClientRect().top + window.scrollY;
+  caja.style.maxHeight = Math.max(300, window.innerHeight - arriba - 12)+'px';
+}
+function fijarColumnasYEncabezado(){
+  ajustarAltoTabla();
+  var tabla = document.getElementById('cronTabla');
+  var filasHead = tabla.tHead ? tabla.tHead.rows : [];
+  if(filasHead.length < 2) return;
+  var lefts = [], acum = 0;
+  for(var c=0; c<4; c++){
+    lefts[c] = acum;
+    var th = filasHead[1].querySelector('[data-c="'+c+'"]');
+    acum += th ? th.getBoundingClientRect().width : 0;
+  }
+  tabla.querySelectorAll('[data-c]').forEach(function(el){
+    el.style.left = lefts[parseInt(el.getAttribute('data-c'),10)]+'px';
+  });
+  var top = 0;
+  for(var r=0; r<filasHead.length; r++){
+    Array.prototype.forEach.call(filasHead[r].cells, function(th){ th.style.top = top+'px'; });
+    top += filasHead[r].getBoundingClientRect().height;
+  }
+}
+window.addEventListener('resize', function(){ fijarColumnasYEncabezado(); });
 
 function celdaClick(td){
   var jj = td.getAttribute('data-jj');
